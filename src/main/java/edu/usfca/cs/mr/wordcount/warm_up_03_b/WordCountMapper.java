@@ -1,4 +1,4 @@
-package edu.usfca.cs.mr.wordcount;
+package edu.usfca.cs.mr.wordcount.warm_up_03_b;
 
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
@@ -9,14 +9,15 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 import java.io.IOException;
-import java.util.StringTokenizer;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Mapper: Reads line by line, split them into words. Emit <word, 1> pairs.
  */
 public class WordCountMapper
-        extends Mapper<LongWritable, Text, Text, IntWritable> {
-
+        extends Mapper<LongWritable, Text, Text, LongWritable> {
+static Map<String,String> commitsMap = new HashMap<>();
     @Override
     protected void map(LongWritable key, Text value, Context context)
             throws IOException, InterruptedException {
@@ -30,8 +31,8 @@ public class WordCountMapper
 //            while (itr.hasMoreTokens()) {
 //                context.write(new Text(itr.nextToken()), new IntWritable(1));
 //            }
-            context.write(new Text(json.get("subreddit").toString()), new IntWritable(1));
-
+            if(Long.parseLong(json.get("ups").toString()) >5)
+            context.write(new Text(json.get("body").toString()), new LongWritable(Long.parseLong(json.get("ups").toString())));
         } catch (ParseException e) {
                 e.printStackTrace();
         }
