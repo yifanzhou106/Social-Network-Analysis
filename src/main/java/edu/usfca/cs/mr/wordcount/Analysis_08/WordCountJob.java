@@ -1,5 +1,8 @@
-package edu.usfca.cs.mr.wordcount.Analysis_03;
+package edu.usfca.cs.mr.wordcount.Analysis_08;
 
+import edu.usfca.cs.mr.wordcount.Analysis_03.ReadableWriter;
+import edu.usfca.cs.mr.wordcount.Analysis_03.WordCountMapper;
+import edu.usfca.cs.mr.wordcount.Analysis_03.WordCountReducer;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;

@@ -16,7 +16,7 @@ import java.util.*;
  */
 public class WordCountReducer
 extends Reducer<Text, LongWritable, Text, LongWritable> {
-    private int uniqueSubreddit = 0;
+    private long uniqueSubreddit = 0;
     @Override
     protected void reduce(
             Text key, Iterable<LongWritable> values, Context context)
@@ -32,7 +32,6 @@ extends Reducer<Text, LongWritable, Text, LongWritable> {
 
     @Override
     protected void cleanup(Context context) throws IOException, InterruptedException {
-        super.cleanup(context);
         context.write(new Text("Unique Subreddit is "), new LongWritable(uniqueSubreddit));
 
     }

@@ -1,0 +1,8 @@
+gospel
+metal
+folk
+electronica
+blues
+classical
+jazz
+hip-hop

@@ -1,8 +1,9 @@
-package edu.usfca.cs.mr.wordcount.Analysis_03;
+package edu.usfca.cs.mr.wordcount.Analysis_07;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.DoubleWritable;
+import org.apache.hadoop.io.ArrayWritable;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
@@ -38,11 +39,11 @@ public class WordCountJob {
 
             /* Outputs from the Mapper. */
             job.setMapOutputKeyClass(Text.class);
-            job.setMapOutputValueClass(ReadableWriter.class);
+            job.setMapOutputValueClass(BackgroundWritable.class);
 
             /* Outputs from the Reducer */
             job.setOutputKeyClass(Text.class);
-            job.setOutputValueClass(DoubleWritable.class);
+            job.setOutputValueClass(ArrayWritable.class);
 
             /* Job input path in HDFS */
             FileInputFormat.addInputPath(job, new Path(args[0]));

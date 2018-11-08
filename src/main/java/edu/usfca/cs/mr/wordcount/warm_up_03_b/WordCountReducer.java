@@ -32,10 +32,6 @@ public class WordCountReducer
 
     @Override
     protected void cleanup(Context context) throws IOException, InterruptedException {
-        super.cleanup(context);
-//        Map<Text,Integer> sortedMap = new HashMap<Text, Integer>();
-//        sortedMap =  sortByComparator(map);
-//        Map.Entry<Text,Integer> entry = sortedMap.entrySet().iterator().next();
 
         Set<Map.Entry<String, Integer>> set = map.entrySet();
         List<Map.Entry<String, Integer>> list = new ArrayList<Map.Entry<String, Integer>>(set);
@@ -45,8 +41,6 @@ public class WordCountReducer
                 return -o2.getValue() +o1.getValue();
             }
         });
-//        Map.Entry<String,Integer> entry = list.iterator().next();
-//        context.write(new Text(entry.getKey()), new IntWritable(entry.getValue()));
 
         for ( int i = 0; i<3; i++) {
             Map.Entry<String,Integer> entry  = list.get(i);
