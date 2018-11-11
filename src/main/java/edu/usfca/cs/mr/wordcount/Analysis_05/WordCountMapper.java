@@ -44,7 +44,7 @@ public class WordCountMapper
 
 
             BackgroundWritable bg = new BackgroundWritable(json, positive, negative);
-            if (!author.equals(""))
+            if (!author.equals("") && bg.hasCount())
               context.write(new Text(author), bg);
 
         } catch (ParseException e) {

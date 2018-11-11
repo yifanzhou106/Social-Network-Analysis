@@ -22,23 +22,26 @@ public class WordCountReducer
     protected void reduce(
             Text key, Iterable<BackgroundWritable> values, Context context)
             throws IOException, InterruptedException {
-        Map<String, Long> positiveMap = new HashMap<>();
-        Map<String, Long> negativeMap = new HashMap<>();
-        Map<Integer, Long> hourMap = new HashMap<>();
-        Map<Integer, Long> weekMap = new HashMap<>();
-        Map<String, Long> sportMap = new HashMap<>();
-        Map<String, Long> hobbyMap = new HashMap<>();
+//        Map<String, Long> positiveMap = new HashMap<>();
+//        Map<String, Long> negativeMap = new HashMap<>();
+        Map<Integer,Long> hourMap = new HashMap<>();
+        Map<Integer,Long> weekMap = new HashMap<>();
+        Map<String,Long> sportMap = new HashMap<>();
+        Map<String,Long> hobbyMap = new HashMap<>();
+        Map<String, Long> scoreMap = new HashMap<>();
+        Long totalCommentNumber = 0L;
 
         long totalWords = 0;
         long screamerCount = 0;
         long csCount = 0;
 
-        for (int i = 0; i < 24; i++)
-            hourMap.put(i, 0L);
-        for (int i = 1; i < 8; i++)
-            weekMap.put(i, 0L);
+        for (int i = 0; i<24; i++)
+            hourMap.put(i,0L);
+        for (int i = 1; i<8; i++)
+            weekMap.put(i,0L);
 
         for (BackgroundWritable val : values) {
+            totalCommentNumber++;
             MapWritable map1 = val.getSportCount();
             MapWritable map2 = val.getHobbyCount();
             for (MapWritable.Entry entry : map1.entrySet()) {
@@ -49,7 +52,7 @@ public class WordCountReducer
             }
 
             csCount += val.getCsCount().get();
-            screamerCount += val.getScreamerCount().get();
+            screamerCount +=val.getScreamerCount().get();
             totalWords += val.getTotal().get();
 
             String subreddit = val.getSubreddit().toString();
@@ -62,25 +65,16 @@ public class WordCountReducer
             /**
              * author like
              */
-            if (positive > 0)
-                if (!positiveMap.containsKey(subreddit)) {
-                    positiveMap.put(subreddit, positive);
+            if (positive > 0 || negative > 0) {
+                Long score = positive - negative;
+                if (!scoreMap.containsKey(subreddit)) {
+                    scoreMap.put(subreddit, score);
                 } else {
-                    Long temp = positiveMap.get(subreddit);
-                    temp += positive;
-                    positiveMap.put(subreddit, temp);
+                    Long temp = scoreMap.get(subreddit);
+                    temp += score;
+                    scoreMap.put(subreddit, temp);
                 }
-            /**
-             * author dislike
-             */
-            if (negative > 0)
-                if (!negativeMap.containsKey(subreddit)) {
-                    negativeMap.put(subreddit, negative);
-                } else {
-                    Long temp = negativeMap.get(subreddit);
-                    temp += negative;
-                    negativeMap.put(subreddit, temp);
-                }
+            }
 
             /**
              * author active day of week
@@ -105,19 +99,18 @@ public class WordCountReducer
             }
 
         }
-        List<Map.Entry<String, Long>> sortedPositiveList = sortStringMap(positiveMap);
-        List<Map.Entry<String, Long>> sortedNegativeList = sortStringMap(negativeMap);
         List<Map.Entry<Integer, Long>> sortedHourList = sortIntegerMap(hourMap);
         List<Map.Entry<Integer, Long>> sortedWeekList = sortIntegerMap(weekMap);
         List<Map.Entry<String, Long>> sortedSportList = sortStringMap(sportMap);
         List<Map.Entry<String, Long>> sortedHobbyList = sortStringMap(hobbyMap);
+        List<Map.Entry<String, Long>> sortedScoreList = sortStringMap(scoreMap);
 
-        BackgroundWritable bg = new BackgroundWritable(sortedPositiveList, sortedNegativeList,
-                sortedHourList, sortedWeekList,
-                sortedSportList, sortedHobbyList, new LongWritable(totalWords),
+        BackgroundWritable bg = new BackgroundWritable(sortedScoreList,
+                sortedHourList,sortedWeekList,
+                sortedSportList,sortedHobbyList, new LongWritable(totalWords),
                 new LongWritable(screamerCount), new LongWritable(csCount));
-
-        userBackgroundMap.put(key.toString(), bg);
+        if (totalCommentNumber>1000L)
+            userBackgroundMap.put(key.toString(), bg);
 //        context.write(key, bg);
 
     }
@@ -125,7 +118,7 @@ public class WordCountReducer
     public List<Map.Entry<String, Long>> sortStringMap(Map<String, Long> map) {
 
         Set<Map.Entry<String, Long>> set = map.entrySet();
-        List<Map.Entry<String, Long>> list = new ArrayList<Map.Entry<String, Long>>(set);
+        List<Map.Entry<String, Long>> list = new LinkedList<>(set);
         Collections.sort(list, new Comparator<Map.Entry<String, Long>>() {
             public int compare(Map.Entry<String, Long> o1,
                                Map.Entry<String, Long> o2) {
@@ -142,7 +135,7 @@ public class WordCountReducer
     public List<Map.Entry<Integer, Long>> sortIntegerMap(Map<Integer, Long> map) {
 
         Set<Map.Entry<Integer, Long>> set = map.entrySet();
-        List<Map.Entry<Integer, Long>> list = new ArrayList<Map.Entry<Integer, Long>>(set);
+        List<Map.Entry<Integer, Long>> list = new LinkedList<Map.Entry<Integer, Long>>(set);
         Collections.sort(list, new Comparator<Map.Entry<Integer, Long>>() {
             public int compare(Map.Entry<Integer, Long> o1,
                                Map.Entry<Integer, Long> o2) {
@@ -164,7 +157,7 @@ public class WordCountReducer
 
 
         Set<Map.Entry<String, BackgroundWritable>> set = userBackgroundMap.entrySet();
-        List<Map.Entry<String, BackgroundWritable>> list = new ArrayList<Map.Entry<String, BackgroundWritable>>(set);
+        List<Map.Entry<String, BackgroundWritable>> list = new LinkedList<Map.Entry<String, BackgroundWritable>>(set);
         Collections.sort(list, new Comparator<Map.Entry<String, BackgroundWritable>>() {
             public int compare(Map.Entry<String, BackgroundWritable> o1,
                                Map.Entry<String, BackgroundWritable> o2) {
@@ -176,13 +169,18 @@ public class WordCountReducer
             }
         });
 
-        for (int i = 0; i < 1000; i++) {
-            Map.Entry<String, BackgroundWritable> entry = list.get(i);
+        /**
+         * Choose top 100 CS Author
+         */
+//        for (int i = 0; i < 100; i++) {
+        for(Map.Entry<String, BackgroundWritable> entry :list){
+//            Map.Entry<String, BackgroundWritable> entry = list.get(i);
             /**
              * update Hobby Pair
              */
+            if (entry.getValue().getFavouriteHobby()!= null)
             if (!hobbyPair.containsKey(entry.getValue().getFavouriteHobby())) {
-                List<String> nameList = new ArrayList<>();
+                List<String> nameList = new LinkedList<>();
                 nameList.add(entry.getKey());
                 hobbyPair.put(entry.getValue().getFavouriteHobby(), nameList);
             } else {
@@ -194,8 +192,9 @@ public class WordCountReducer
             /**
              * update Sport Pair
              */
-            if (!sportPair.containsKey(entry.getValue().getFavouriteSport())) {
-                List<String> nameList = new ArrayList<>();
+            if (entry.getValue().getFavouriteSport()!=null)
+                if (!sportPair.containsKey(entry.getValue().getFavouriteSport())) {
+                List<String> nameList = new LinkedList<>();
                 nameList.add(entry.getKey());
                 sportPair.put(entry.getValue().getFavouriteSport(), nameList);
             } else {
@@ -207,8 +206,9 @@ public class WordCountReducer
             /**
              * update Subreddit pair
              */
-            if (!subredditPair.containsKey(entry.getValue().getFavouriteSubreddit())) {
-                List<String> nameList = new ArrayList<>();
+            if (entry.getValue().getFavouriteSubreddit()!=null)
+                if (!subredditPair.containsKey(entry.getValue().getFavouriteSubreddit())) {
+                List<String> nameList = new LinkedList<>();
                 nameList.add(entry.getKey());
                 subredditPair.put(entry.getValue().getFavouriteSubreddit(), nameList);
             } else {
@@ -219,6 +219,14 @@ public class WordCountReducer
 
 //            context.write(new Text(entry.getKey()), entry.getValue());
         }
+//        context.write(new Text("hobbyPair："), new Text(hobbyPair.toString()));
+//        context.write(new Text("sportPair"), new Text(sportPair.toString()));
+//        context.write(new Text("subredditPair"), new Text(subredditPair.toString()));
+
+
+        /**
+         * Create a real Friend pair map for 10 authors
+         */
         Map<String,List<String>> realFriendPairs = new HashMap<>();
         for (int i = 0; i < 10; i++) {
             Map<String, Integer> relationChance = new HashMap<>();
@@ -259,7 +267,7 @@ public class WordCountReducer
                         }
                     }
                 }
-                List<String> friendsList = new ArrayList<>();
+                List<String> friendsList = new LinkedList<>();
                 for (Map.Entry<String, Integer> friend:relationChance.entrySet()){
                     if (friend.getValue() >= 2){
                         friendsList.add(friend.getKey());
@@ -271,9 +279,14 @@ public class WordCountReducer
 
 
         for (Map.Entry<String, List<String>> entry : realFriendPairs.entrySet()) {
-            context.write(new Text(entry.getKey()), new Text("\'s potential friend: "));
-            for (String name: entry.getValue())
-                context.write(new Text(" "), new Text(name));
+            if (!entry.getKey().equals("[deleted]")) {
+                context.write(new Text(entry.getKey()), new Text("\'s potential friend: "));
+                for (String name : entry.getValue())
+                    context.write(new Text(", "), new Text(name));
+
+                context.write(new Text(""), new Text("\n "));
+
+            }
         }
     }
 }

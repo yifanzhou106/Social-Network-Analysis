@@ -16,8 +16,9 @@ import java.util.*;
  */
 public class WordCountReducer
         extends Reducer<Text, SentimentAnalysisWritable, Text, LongWritable> {
-    private Map<String, Long> positiveMap = new HashMap<>();
-    private Map<String, Long> negativeMap = new HashMap<>();
+//    private Map<String, Long> positiveMap = new HashMap<>();
+//    private Map<String, Long> negativeMap = new HashMap<>();
+    private Map<String, Long> scoreMap = new HashMap<>();
 
 
     @Override
@@ -30,8 +31,9 @@ public class WordCountReducer
             rw.increment(val);
         }
 
-        positiveMap.put(key.toString(), rw.getPositiveCount().get());
-        negativeMap.put(key.toString(), rw.getNegativeCount().get());
+//        positiveMap.put(key.toString(), rw.getPositiveCount().get());
+//        negativeMap.put(key.toString(), rw.getNegativeCount().get());
+        scoreMap.put(key.toString(), rw.getPositiveCount().get() - rw.getNegativeCount().get());
 //        context.write(key, rw);
 
     }
@@ -39,7 +41,7 @@ public class WordCountReducer
     @Override
     protected void cleanup(Context context) throws IOException, InterruptedException {
 
-        Set<Map.Entry<String, Long>> set = positiveMap.entrySet();
+        Set<Map.Entry<String, Long>> set = scoreMap.entrySet();
         List<Map.Entry<String, Long>> list = new ArrayList<Map.Entry<String, Long>>(set);
         Collections.sort(list, new Comparator<Map.Entry<String, Long>>() {
             public int compare(Map.Entry<String, Long> o1,
@@ -60,20 +62,20 @@ public class WordCountReducer
 //            context.write(new Text(entry.getKey()), new LongWritable(entry.getValue()));
 //        }
 
-        set = negativeMap.entrySet();
-        list = new ArrayList<Map.Entry<String, Long>>(set);
-        Collections.sort(list, new Comparator<Map.Entry<String, Long>>() {
-            public int compare(Map.Entry<String, Long> o1,
-                               Map.Entry<String, Long> o2) {
-                if ((o2.getValue() < o1.getValue()))
-                    return -1;
-                else if ((o2.getValue() > o1.getValue()))
-                    return 1;
-                else return 0;
-            }
-        });
+//        set = negativeMap.entrySet();
+//        list = new ArrayList<Map.Entry<String, Long>>(set);
+//        Collections.sort(list, new Comparator<Map.Entry<String, Long>>() {
+//            public int compare(Map.Entry<String, Long> o1,
+//                               Map.Entry<String, Long> o2) {
+//                if ((o2.getValue() < o1.getValue()))
+//                    return -1;
+//                else if ((o2.getValue() > o1.getValue()))
+//                    return 1;
+//                else return 0;
+//            }
+//        });
         context.write(new Text("\n\n***************Negative Top "), new LongWritable(5));
-        for ( int i = 0; i<5; i++) {
+        for ( int i = scoreMap.size() -1; i > scoreMap.size() - 6; i--) {
             Map.Entry<String,Long> entry  = list.get(i);
             context.write(new Text(entry.getKey()), new LongWritable(entry.getValue()));
         }

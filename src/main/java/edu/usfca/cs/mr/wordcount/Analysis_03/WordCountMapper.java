@@ -8,6 +8,7 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 import java.io.IOException;
+import java.util.Random;
 import java.util.StringTokenizer;
 
 
@@ -30,8 +31,13 @@ public class WordCountMapper
             String subreddit = json.get("subreddit").toString();
             String body = json.get("body").toString();
 
+            Random rand = new Random();
+
+            int rand_count = rand.nextInt(100);
             ReadableWriter rw = new ReadableWriter(body);
-            context.write(new Text(body), rw);
+            if(rw.hasCount()&& rand_count>90){
+                context.write(new Text(body), rw);
+            }
 
         } catch (ParseException e) {
             e.printStackTrace();

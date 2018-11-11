@@ -42,6 +42,7 @@ public class BackgroundWritable implements Writable {
     private List<Map.Entry<Integer, Long>> sortedWeekList;
     private List<Map.Entry<String, Long>> sortedSportList;
     private List<Map.Entry<String, Long>> sortedHobbyList;
+    private List<Map.Entry<String, Long>> sortedScoreList;
 
     private String favouriteSubreddit;
     private String unfavouriteSubreddit;
@@ -62,13 +63,11 @@ public class BackgroundWritable implements Writable {
 
     }
 
-    public BackgroundWritable(List<Map.Entry<String, Long>> sortedPositiveList,
-                              List<Map.Entry<String, Long>> sortedNegativeList, List<Map.Entry<Integer, Long>> sortedHourList,
+    public BackgroundWritable(List<Map.Entry<String, Long>> sortedScoreList, List<Map.Entry<Integer, Long>> sortedHourList,
                               List<Map.Entry<Integer, Long>> sortedWeekList, List<Map.Entry<String, Long>> sortedSportList,
                               List<Map.Entry<String, Long>> sortedHobbyList, LongWritable totalCount,
                               LongWritable screamerCount, LongWritable csCount ) {
-        this.sortedPositiveList = sortedPositiveList;
-        this.sortedNegativeList = sortedNegativeList;
+        this.sortedScoreList = sortedScoreList;
         this.sortedHourList = sortedHourList;
         this.sortedWeekList = sortedWeekList;
         this.sortedSportList = sortedSportList;
@@ -233,30 +232,24 @@ public class BackgroundWritable implements Writable {
         Map.Entry<Integer, Long> favouriteWeek = sortedHourList.iterator().next();
         sb.append(toWeekString(favouriteWeek.getKey()));
 
-        sb.append(". He is busy and never write comment at ");
-        for ( Map.Entry<Integer, Long> hour: sortedHourList){
-            if (hour.getValue() == 0L){
-                sb.append(hour.getKey() + " O\'clock\t");
-            }
-        }
-        for ( Map.Entry<Integer, Long> week: sortedWeekList){
-            if (week.getValue() == 0L){
-                sb.append(toWeekString(week.getKey()) + "\t");
-            }
+        long count = sortedScoreList.size();
+        if (count > 3)
+            count = 3;
+
+        sb.append("\nHis Top 3 favourite Subreddit are ");
+        for (int i = 0; i< count; i++){
+            Map.Entry<String, Long> like = sortedScoreList.get(i);
+            favouriteSubreddit = like.getKey();
+            sb.append(favouriteSubreddit + ", ");
         }
 
-        if (!sortedPositiveList.isEmpty()) {
-            sb.append(". His favorite Subreddit is ");
-            Map.Entry<String, Long> like = sortedPositiveList.iterator().next();
-            favouriteSubreddit = like.getKey();
-            sb.append(favouriteSubreddit);
-        }
-        if (!sortedNegativeList.isEmpty()) {
-            sb.append(". He don't like  ");
-            Map.Entry<String, Long> dislike = sortedNegativeList.iterator().next();
+        sb.append("\nHe does not like ");
+        for (int i = sortedScoreList.size()-1; i > sortedScoreList.size() - 2; i--){
+            Map.Entry<String, Long> dislike = sortedScoreList.get(i);
             unfavouriteSubreddit = dislike.getKey();
-            sb.append(unfavouriteSubreddit);
+            sb.append(unfavouriteSubreddit + ", ");
         }
+
         if (!sortedSportList.isEmpty()){
             sb.append(". His favourite sport is ");
             Map.Entry<String, Long> sport = sortedSportList.iterator().next();
@@ -304,6 +297,12 @@ public class BackgroundWritable implements Writable {
             }
         }
         return buffer.toString().toLowerCase();
+    }
+
+    public boolean hasCount() {
+        return this.positiveCount.get() > 0
+                || this.negativeCount.get() > 0
+                && (this.week.get() >= 0 && this.hour.get()>=0);
     }
 
     private double round(double d, int decimalPlace) {

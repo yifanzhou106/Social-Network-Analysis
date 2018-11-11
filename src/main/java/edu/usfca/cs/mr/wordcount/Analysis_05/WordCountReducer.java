@@ -22,8 +22,11 @@ public class WordCountReducer
             throws IOException, InterruptedException {
         Map<String, Long> positiveMap = new HashMap<>();
         Map<String, Long> negativeMap = new HashMap<>();
+        Map<String, Long> scoreMap = new HashMap<>();
+
         Map<Integer,Long> hourMap = new HashMap<>();
         Map<Integer,Long> weekMap = new HashMap<>();
+        Long totalCommentNumber = 0L;
 
         for (int i = 0; i<24; i++)
             hourMap.put(i,0L);
@@ -31,6 +34,7 @@ public class WordCountReducer
             weekMap.put(i,0L);
 
         for (BackgroundWritable val : values) {
+            totalCommentNumber++;
             String subreddit = val.getSubreddit().toString();
             Long positive = val.getPositiveCount().get();
             Long negative = val.getNegativeCount().get();
@@ -40,25 +44,16 @@ public class WordCountReducer
             /**
              * author like
              */
-            if (positive > 0)
-                if (!positiveMap.containsKey(subreddit)) {
-                    positiveMap.put(subreddit, positive);
+            if (positive > 0 || negative > 0) {
+                Long score = positive - negative;
+                if (!scoreMap.containsKey(subreddit)) {
+                    scoreMap.put(subreddit, score);
                 } else {
-                    Long temp = positiveMap.get(subreddit);
-                    temp += positive;
-                    positiveMap.put(subreddit, temp);
+                    Long temp = scoreMap.get(subreddit);
+                    temp += score;
+                    scoreMap.put(subreddit, temp);
                 }
-            /**
-             * author dislike
-             */
-            if (negative > 0)
-                if (!negativeMap.containsKey(subreddit)) {
-                    negativeMap.put(subreddit, negative);
-                } else {
-                    Long temp = negativeMap.get(subreddit);
-                    temp += negative;
-                    negativeMap.put(subreddit, temp);
-                }
+            }
 
             /**
              * author active day of week
@@ -83,13 +78,15 @@ public class WordCountReducer
             }
 
         }
-        List<Map.Entry<String, Long>> sortedPositiveList = sortStringMap(positiveMap);
-        List<Map.Entry<String, Long>> sortedNegativeList = sortStringMap(negativeMap);
-        List<Map.Entry<Integer, Long>> sortedHourList = sortIntegerMap(hourMap);
-        List<Map.Entry<Integer, Long>> sortedWeekList = sortIntegerMap(weekMap);
-
-        BackgroundWritable bg = new BackgroundWritable(sortedPositiveList,sortedNegativeList,sortedHourList,sortedWeekList);
-        context.write(key, bg);
+//        List<Map.Entry<String, Long>> sortedPositiveList = sortStringMap(positiveMap);
+//        List<Map.Entry<String, Long>> sortedNegativeList = sortStringMap(negativeMap);
+//        List<Map.Entry<Integer, Long>> sortedHourList = sortIntegerMap(hourMap);
+//        List<Map.Entry<Integer, Long>> sortedWeekList = sortIntegerMap(weekMap);
+        List<Map.Entry<String, Long>> sortedScoreList = sortStringMap(scoreMap);
+//        BackgroundWritable bg = new BackgroundWritable(sortedPositiveList,sortedNegativeList,hourMap,weekMap);
+        BackgroundWritable bg = new BackgroundWritable(sortedScoreList,hourMap,weekMap, totalCommentNumber);
+        if (totalCommentNumber >2000L)
+            context.write(key, bg);
 
     }
 

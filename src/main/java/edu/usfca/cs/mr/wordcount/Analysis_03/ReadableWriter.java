@@ -8,81 +8,83 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
 public class ReadableWriter implements Writable {
-//    private Map<String, Double> wordsTF = new HashMap<>();
-//    private Map<String, Double> termMap = new HashMap<>();
-    private MapWritable wordsTF =new MapWritable();
-    private MapWritable termMap =new MapWritable();
-    private LongWritable words;
 
-    public ReadableWriter(){
+    private ArrayWritable keyWritableList = new ArrayWritable(Text.class);
+    private ArrayWritable termWritableList = new ArrayWritable(DoubleWritable.class);
+
+    private List<Text> keyList = new LinkedList<>();
+    private List<DoubleWritable> termList = new LinkedList<>();
+
+    private Map<String, Double> termCountMap = new HashMap<>();
+
+    private Long words = 0L;
+
+    public ReadableWriter() {
+        keyWritableList = new ArrayWritable(Text.class);
+        termWritableList = new ArrayWritable(DoubleWritable.class);
+        keyList = new LinkedList<>();
+        termList = new LinkedList<>();
+        words = 0L;
+        termCountMap = new HashMap<>();
     }
 
-    public ReadableWriter(String text){
-        this.words = new LongWritable(this.getNumberOfWords(text));
+    public ReadableWriter(String text) {
+        this.countTerm(text);
         this.updateTermMap(text);
     }
 
-    public MapWritable getTermMap(){
-        return termMap;
+
+    public ArrayWritable getKeyList() {
+        return keyWritableList;
     }
 
-    public MapWritable getTFMap(){
-        return wordsTF;
+    public ArrayWritable getTermList() {
+        return termWritableList;
     }
 
-    public void Copy (ReadableWriter rw) {
-        this.wordsTF = rw.wordsTF;
-        this.termMap = rw.termMap;
 
-    }
-
-    private void updateTermMap(String text){
+    private void updateTermMap(String text) {
         String cleanText = cleanLine(text);
         String[] word = cleanText.split(" ");
         for (String w : word) {
-            long count = this.getCurrentWordCount(w,text);
-            if(!w.equals("") && count >0) {
-                termMap.put(new Text(w), new LongWritable(count));
-                if (words.get() != 0) {
-                    double tf = count / words.get();
-                    wordsTF.put(new Text(w), new DoubleWritable(tf));
+            if (w.length() > 0) {
+                double count = this.termCountMap.get(w);
+                if (count > 0) {
+                    keyList.add(new Text(w));
+                    termList.add(new DoubleWritable(count));
                 }
             }
         }
+        Text[] keyListT = new Text[keyList.size()];
+        DoubleWritable[] termListD = new DoubleWritable[termList.size()];
+        for (int i = 0; i < keyList.size(); i++) {
+            keyListT[i] = keyList.get(i);
+            termListD[i] = termList.get(i);
+        }
+        keyWritableList.set(keyListT);
+        termWritableList.set(termListD);
     }
 
-
-
-    private int getCurrentWordCount(String token, String text){
+    private void countTerm(String text) {
         String cleanText = cleanLine(text);
         String[] word = cleanText.split(" ");
-        int words = 0;
-        for (String w : word) {
-            if (w.length() > 0 &&(w.equals(token)))
-                words++;
-        }
-        return words;
+        if (word.length > 0)
+            for (String w : word) {
+                if (w.length() > 0) {
+                    words++;
+                    if (!termCountMap.containsKey(w)) {
+                        termCountMap.put(w, 1D);
+                    } else {
+                        double count = termCountMap.get(w);
+                        termCountMap.put(w, count + 1D);
+                    }
+                }
+            }
     }
-
-
-    private int getNumberOfWords(String text) {
-        String cleanText = cleanLine(text);
-        String[] word = cleanText.split(" ");
-        int words = 0;
-        for (String w : word) {
-            if (w.length() > 0)
-                words++;
-        }
-        return words;
-    }
-
 
 
     private String cleanLine(String line) {
@@ -98,6 +100,11 @@ public class ReadableWriter implements Writable {
         return buffer.toString().toLowerCase();
     }
 
+    public boolean hasCount() {
+        return this.words > 0
+                && this.keyList.size() > 0
+                && this.termList.size() > 0;
+    }
 
     private double round(double d, int decimalPlace) {
         // see the Javadoc about why we use a String in the constructor
@@ -109,23 +116,27 @@ public class ReadableWriter implements Writable {
 
 
     public void readFields(DataInput in) throws IOException {
-//        this.words.readFields(in);
-        this.termMap.readFields(in);
-        this.wordsTF.readFields(in);
+        this.keyWritableList.readFields(in);
+        this.termWritableList.readFields(in);
+
+//        this.termMap.readFields(in);
+//        this.wordsTF.readFields(in);
+
     }
 
     public void write(DataOutput out) throws IOException {
-//        this.words.write(out);
+        this.keyWritableList.write(out);
+        this.termWritableList.write(out);
 
-        this.termMap.write(out);
-        this.wordsTF.write(out);
+//        this.termMap.write(out);
+//        this.wordsTF.write(out);
     }
 
 
     @Override
     public String toString() {
-        return "termMap: " + termMap.toString()
-                +"\t" + "wordsTF: " +wordsTF.toString();
+        return "keyWritableList: " + keyWritableList.toString()
+                + "\t" + "termWritableList: " + termWritableList.toString();
 
     }
 

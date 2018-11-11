@@ -1,11 +1,13 @@
 package edu.usfca.cs.mr.wordcount.Analysis_03;
 
+import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
+import java.security.Key;
 import java.util.*;
 
 /**
@@ -17,40 +19,65 @@ public class WordCountReducer
         extends Reducer<Text, ReadableWriter, Text, DoubleWritable> {
     public Map<String, ReadableWriter> map = new HashMap<>();
 
-    private List<Map<String, Long>> allTermMap = new ArrayList<>();
-    private List<Map<String, Double>> allTFMap = new ArrayList<>();
-    private List<Map<String, Double>> tfIDFMap = new ArrayList<>();
+    private List<String> allTermMap = new LinkedList<>();
+    private List<Double> allTFMap = new LinkedList<>();
+//    private List<Map<String, Double>> tfIDFMap = new LinkedList<>();
     private Map<String, Long> wordAppearCountMap = new HashMap<>();
+//    private Map<String, Long> termMap;
+//    private Map<String, Double> wordsTF;
+    private Long commentCount = 0L;
+
+//    private MapWritable map1;
+//    private MapWritable map2;
 
     @Override
     protected void reduce(
             Text key, Iterable<ReadableWriter> values, Context context)
             throws IOException, InterruptedException {
-        Map<String, Long> termMap = new HashMap<>();
-        Map<String, Double> wordsTF = new HashMap<>();
+        List<Double> termCountList = new LinkedList<>();
 
+        commentCount++;
+        long commentWordsCount = 0;
         ReadableWriter rw = values.iterator().next();
-        MapWritable map1 = rw.getTermMap();
-        MapWritable map2 = rw.getTFMap();
+//        map1 = rw.getTermMap();
+//        map2 = rw.getTFMap();
+        Text[] keylist = (Text[])rw.getKeyList().toArray();
+        DoubleWritable[] termlist = (DoubleWritable[])rw.getTermList().toArray();
 
-        for (MapWritable.Entry entry : map1.entrySet()) {
-            termMap.put(entry.getKey().toString(), Long.valueOf(entry.getValue().toString()));
+//        for (MapWritable.Entry entry : map1.entrySet()) {
+////            context.write(new Text(entry.getKey() + "_Term"), new DoubleWritable(Double.valueOf(entry.getValue().toString())));
+//            commentWordsCount += Double.valueOf(entry.getValue().toString());
+//            allTermMap.add(entry.getKey().toString());
+//            termCountList.add(Double.valueOf(entry.getValue().toString()));
+//        }
+        for (Text entry : keylist) {
+            allTermMap.add(entry.toString());
         }
-        for (MapWritable.Entry entry : map2.entrySet()) {
-            wordsTF.put(entry.getKey().toString(), Double.valueOf(entry.getValue().toString()));
+        for (DoubleWritable entry : termlist) {
+            commentWordsCount += Double.valueOf(entry.toString());
+            termCountList.add(Double.valueOf(entry.toString()));
         }
 
-        for (Map.Entry<String,Long> entry: termMap.entrySet()){
-            if (!wordAppearCountMap.containsKey(entry.getKey())){
-                wordAppearCountMap.put(entry.getKey(),1L);
-            }else{
-                long count = wordAppearCountMap.get(entry.getKey());
-                wordAppearCountMap.put(entry.getKey(), count + 1L);
+        for (Double count: termCountList){
+//            context.write(new Text( "_TF"), new DoubleWritable(count/commentWordsCount));
+            allTFMap.add(count/commentWordsCount);
+        }
+
+//        for (MapWritable.Entry entry : map2.entrySet()) {
+//            context.write(new Text(entry.getKey() + "_TF"), new DoubleWritable(Double.valueOf(entry.getValue().toString())));
+//
+//            allTFMap.add(Double.valueOf(entry.getValue().toString()));
+//        }
+
+        long count;
+        for (Text entry : keylist) {
+            if (!wordAppearCountMap.containsKey(entry.toString())) {
+                wordAppearCountMap.put(entry.toString(), 1L);
+            } else {
+                count = wordAppearCountMap.get(entry.toString());
+                wordAppearCountMap.put(entry.toString(), count + 1L);
             }
         }
-        allTermMap.add(termMap);
-        allTFMap.add(wordsTF);
-
 
 //        map.put(key.toString(), rw);
 //        context.write(key, rw);
@@ -59,32 +86,24 @@ public class WordCountReducer
 
     @Override
     protected void cleanup(Context context) throws IOException, InterruptedException {
-        long totalComments = allTermMap.size();
-        context.write(new Text("Total size"), new DoubleWritable(totalComments));
-        Map<String, Double> wordsIDF;
-//        for (Map<String, Long> map : allTermMap) {
-          Map<String, Long> map = allTermMap.get(0);
-            wordsIDF = new HashMap<>();
-            for (Map.Entry<String, Long> termMap : map.entrySet()) {
-              long count = wordAppearCountMap.get(termMap.getKey());
-                double idf = Math.log(totalComments/count);
-//                context.write(new Text(termMap.getKey() + "_count"), new DoubleWritable(count));
-//                context.write(new Text(termMap.getKey() + "_log(totalComments/count)"), new DoubleWritable(Math.log(totalComments/count)));
-                wordsIDF.put(termMap.getKey(), idf * termMap.getValue());
-            }
-            tfIDFMap.add(wordsIDF);
-//        }
-        /**
-         * Print all
-         */
 
-        for (Map<String, Double> tfIDFmap :tfIDFMap){
-            for (Map.Entry<String, Double> result: tfIDFmap.entrySet())
-            {
-                context.write(new Text(result.getKey()), new DoubleWritable(result.getValue()));
-            }
-            context.write(new Text("\n*************Next Comment:"), new DoubleWritable(0));
+        context.write(new Text("Total size"), new DoubleWritable(commentCount));
+        for (int i = 0; i < allTermMap.size(); i++ ) {
+            String key = allTermMap.get(i);
+            Double TF = allTFMap.get(i);
 
+            long count = wordAppearCountMap.get(key);
+            if (count != 0) {
+                double idf = Math.log10(commentCount / count);
+                double TF_IDF = TF * idf;
+//            context.write(new Text(key + "_TF"), new DoubleWritable(TF));
+//            context.write(new Text(key + "_IDF"), new DoubleWritable(idf));
+
+//                wordsIDF.put(termMap.getKey(), idf * termMap.getValue());
+                context.write(new Text(key), new DoubleWritable(TF_IDF));
+            }
+//            tfIDFMap.add(wordsIDF);
         }
+
     }
 }

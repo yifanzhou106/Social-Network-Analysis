@@ -43,10 +43,10 @@ public class WordCountJob {
             /* Outputs from the Reducer */
             job.setOutputKeyClass(Text.class);
             job.setOutputValueClass(DoubleWritable.class);
-
+            job.setNumReduceTasks(5);
             /* Job input path in HDFS */
             FileInputFormat.addInputPath(job, new Path(args[0]));
-
+            job.getConfiguration().setStrings("mapreduce.reduce.shuffle.memory.limit.percent", "0.15");
             /* Job output path in HDFS. NOTE: if the output path already exists
              * and you try to create it, the job will fail. You may want to
              * automate the creation of new output directories here */
